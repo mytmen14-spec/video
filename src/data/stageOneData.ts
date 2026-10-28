@@ -1066,6 +1066,177 @@ if __name__ == "__main__":
     variants = generate_variants(args.topic, args.format)
     print(json.dumps(variants, ensure_ascii=False, indent=2))`;
 
+export const batchPy = `"""
+pipeline/batch.py
+Батч-генерация N роликов из content/ideas.csv с вариативностью:
+- Хуки: разные варианты из hooks.json
+- Палитры: чередование 4 палитр
+- Ритм: быстрый/средний/медленный
+- Визуализации: разные типы графиков
+"""
+import os
+import csv
+import json
+import random
+import time
+import yaml
+from typing import List, Dict
+
+with open("config.yaml", "r", encoding="utf-8") as f:
+    CONFIG = yaml.safe_load(f)
+
+PALETTES = [
+    {"id": "cyan-violet", "accent1": "#22D3EE", "accent2": "#A78BFA"},
+    {"id": "amber-rose", "accent1": "#FBBF24", "accent2": "#FB7185"},
+    {"id": "emerald-blue", "accent1": "#34D399", "accent2": "#3B82F6"},
+    {"id": "pink-cyan", "accent1": "#EC4899", "accent2": "#06B6D4"},
+]
+
+RHYTHMS = [
+    {"id": "быстрый", "frame_duration": 1.5, "cuts_per_min": 40},
+    {"id": "средний", "frame_duration": 2.0, "cuts_per_min": 30},
+    {"id": "медленный", "frame_duration": 2.5, "cuts_per_min": 24},
+]
+
+# Веса для распределения форматов: 40% шок-цифра, 25% сравнение, 20% прогноз, 15% миф
+FORMAT_WEIGHTS = {
+    "шок-цифра": 0.40,
+    "сравнение": 0.25,
+    "прогноз": 0.20,
+    "миф": 0.15,
+}
+
+
+def load_ideas(path: str = "content/ideas.csv") -> List[Dict]:
+    """Загружает контент-матрицу из CSV."""
+    ideas = []
+    with open(path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            ideas.append(row)
+    return ideas
+
+
+def assign_variants(ideas: List[Dict], count: int) -> List[Dict]:
+    """Назначает вариативные параметры каждому ролику."""
+    selected = ideas[:count]
+    for i, idea in enumerate(selected):
+        # Палитра: чередуем, чтобы не было двух одинаковых подряд
+        idea["palette"] = PALETTES[i % len(PALETTES)]
+        # Ритм: чередуем с лёгким смещением
+        rhythm_idx = (i * 7 + 3) % len(RHYTHMS)
+        idea["rhythm"] = RHYTHMS[rhythm_idx]
+        # Хук: случайный вариант (1-3)
+        idea["hook_variant"] = random.randint(1, 3)
+    return selected
+
+
+def generate_batch(count: int) -> Dict:
+    """Главная функция батч-генерации."""
+    start_time = time.time()
+    ideas = load_ideas()
+    selected = assign_variants(ideas, count)
+
+    batch_dir = f"output/batch_{count}"
+    os.makedirs(batch_dir, exist_ok=True)
+
+    results = []
+    for i, idea in enumerate(selected):
+        topic = idea.get("topic", f"Ролик_{i+1}")
+        format_type = idea.get("format", "шок-цифра")
+        palette = idea["palette"]
+        rhythm = idea["rhythm"]
+
+        print(f"\\n[batch] Ролик {i+1}/{count}: \\"{topic}\\"")
+        print(f"  - Хук: вариант #{idea['hook_variant']}")
+        print(f"  - Палитра: {palette['id']}")
+        print(f"  - Ритм: {rhythm['id']} ({rhythm['frame_duration']}с/кадр)")
+
+        video_start = time.time()
+
+        # Импортируем модули пайплайна
+        from pipeline.script import generate_script
+        from pipeline.visuals import render_all_frames
+        from pipeline.assemble import build_video
+        from pipeline.compliance import run_compliance
+
+        # Генерация сценария с вариативностью
+        script = generate_script(topic, format_type, {
+            "source": idea.get("source", "открытые данные"),
+            "palette": palette,
+            "rhythm": rhythm,
+            "hook_variant": idea["hook_variant"],
+        })
+
+        # Рендер кадров
+        frames = render_all_frames(script, {}, topic)
+
+        # Сборка видео
+        video_path = build_video(topic)
+
+        # Compliance
+        try:
+            run_compliance(topic)
+            status = "ok"
+        except Exception as e:
+            status = "error"
+            print(f"  - WARNING: compliance failed: {e}")
+
+        video_time = time.time() - video_start
+        size_mb = os.path.getsize(video_path) / (1024 * 1024)
+
+        # Перемещение в batch-директорию
+        batch_video = os.path.join(batch_dir, f"{i+1:02d}_{topic}.mp4")
+        os.rename(video_path, batch_video)
+
+        result = {
+            "id": i + 1,
+            "topic": topic,
+            "format": format_type,
+            "hook_variant": idea["hook_variant"],
+            "palette": palette["id"],
+            "rhythm": rhythm["id"],
+            "frame_duration": rhythm["frame_duration"],
+            "duration": script.get("total_duration", 35),
+            "size_mb": round(size_mb, 1),
+            "render_time": f"{video_time/60:.0f}м {video_time%60:.0f}с",
+            "status": status,
+            "source": idea.get("source", ""),
+        }
+        results.append(result)
+
+        print(f"  - Время: {result['render_time']} | Размер: {size_mb:.1f} MB | Статус: {'✓' if status == 'ok' else '✗'}")
+
+    total_time = time.time() - start_time
+
+    # Сохранение отчёта
+    report = {
+        "batch_size": count,
+        "total_time_sec": round(total_time, 1),
+        "avg_time_per_video": round(total_time / count, 1),
+        "total_size_mb": round(sum(r["size_mb"] for r in results), 1),
+        "videos": results,
+    }
+    report_path = os.path.join(batch_dir, "batch_report.json")
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+
+    print(f"\\n=== Батч завершён ===")
+    print(f"Всего роликов: {count}")
+    print(f"Общее время: {total_time/60:.0f} мин {total_time%60:.0f} сек")
+    print(f"Общий размер: {report['total_size_mb']:.1f} MB")
+    print(f"Отчёт: {report_path}")
+
+    return report
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--count", type=int, default=10)
+    args = parser.parse_args()
+    generate_batch(args.count)`;
+
 export const publishPlanPy = `"""
 pipeline/publish_plan.py
 Генерация календаря публикаций на 14 дней.

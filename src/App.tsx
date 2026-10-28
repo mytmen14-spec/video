@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { nicheCandidates, weights, contentIdeas, growthPlan, retentionTimeline, architectureTree } from './data/nicheData';
 import { userConfig, envCheckResults, installCommand, configYaml, makefile, requirementsTxt, researchPy, scriptPy, voicePy, visualsPy, captionsPy, assemblePy, compliancePy, variantsPy, publishPlanPy } from './data/stageOneData';
 import { topicConfig, pipelineSteps, ffprobeMetadata, ffprobeOutput, frames, transcript, transcriptSRT, complianceReport, sidecarMetadata, runCommand } from './data/stageTwoData';
+import { batchConfig, batchVideos, palettes, rhythmVariants, batchStats, batchCommand, variabilityReport } from './data/stageThreeData';
 
-type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2';
+type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('niche');
@@ -18,6 +19,7 @@ function App() {
     { key: 'answers', label: 'Ответы', icon: '✅' },
     { key: 'stage1', label: 'ЭТАП 1', icon: '⚙️' },
     { key: 'stage2', label: 'ЭТАП 2', icon: '🎬' },
+    { key: 'stage3', label: 'ЭТАП 3', icon: '📦' },
   ];
 
   return (
@@ -71,6 +73,7 @@ function App() {
         {activeTab === 'answers' && <AnswersSection />}
         {activeTab === 'stage1' && <StageOneSection />}
         {activeTab === 'stage2' && <StageTwoSection />}
+        {activeTab === 'stage3' && <StageThreeSection />}
       </main>
 
       {/* Footer */}
@@ -1174,6 +1177,304 @@ Filesystem      Size  Used Avail Use%
 }
 
 export default App;
+
+// ===== STAGE 3: Batch Mode =====
+function StageThreeSection() {
+  const [activeView, setActiveView] = useState<'table' | 'variability' | 'palettes' | 'rhythms'>('table');
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-purple-300 mb-2">📦 ЭТАП 3 — Батч-режим</h2>
+        <p className="text-gray-400 mb-2">
+          Генерация <span className="text-white font-semibold">{batchConfig.count} роликов</span> из ideas.csv с вариативностью хука, палитры и монтажного ритма.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded text-xs font-mono">✓ 10/10 роликов</span>
+          <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-xs font-mono">⏱ {batchConfig.totalTime}</span>
+          <span className="px-2 py-1 bg-purple-900/50 text-purple-300 rounded text-xs font-mono">💾 {batchConfig.totalDiskUsed}</span>
+          <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded text-xs font-mono">🎨 4 палитры</span>
+        </div>
+      </div>
+
+      {/* Run command */}
+      <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+          <span className="text-xs font-mono text-gray-500">terminal</span>
+          <button
+            onClick={() => navigator.clipboard.writeText(batchCommand)}
+            className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded"
+          >
+            📋 Копировать
+          </button>
+        </div>
+        <pre className="p-4 text-xs font-mono text-green-400 whitespace-pre overflow-x-auto leading-relaxed max-h-96">
+          {batchCommand}
+        </pre>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 text-center">
+          <p className="text-2xl font-bold text-white">{batchStats.totalDuration.toFixed(1)}с</p>
+          <p className="text-xs text-gray-500">Общая длительность</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 text-center">
+          <p className="text-2xl font-bold text-white">{batchStats.avgDuration.toFixed(1)}с</p>
+          <p className="text-xs text-gray-500">Средняя длительность</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 text-center">
+          <p className="text-2xl font-bold text-white">{batchConfig.avgTimePerVideo}</p>
+          <p className="text-xs text-gray-500">Среднее время/ролик</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 text-center">
+          <p className="text-2xl font-bold text-white">{batchConfig.avgSizePerVideo}</p>
+          <p className="text-xs text-gray-500">Средний размер/ролик</p>
+        </div>
+      </div>
+
+      {/* View switcher */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { id: 'table', label: '📋 Таблица роликов' },
+          { id: 'variability', label: '🎯 Вариативность' },
+          { id: 'palettes', label: '🎨 Палитры' },
+          { id: 'rhythms', label: '⏱️ Ритмы' },
+        ].map(v => (
+          <button
+            key={v.id}
+            onClick={() => setActiveView(v.id as typeof activeView)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeView === v.id
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Table view */}
+      {activeView === 'table' && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">#</th>
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">Тема</th>
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">Формат</th>
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">Палитра</th>
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">Ритм</th>
+                <th className="text-center py-3 px-2 text-gray-400 font-medium">Длит.</th>
+                <th className="text-center py-3 px-2 text-gray-400 font-medium">Размер</th>
+                <th className="text-center py-3 px-2 text-gray-400 font-medium">Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchVideos.map(video => (
+                <tr key={video.id} className="border-b border-gray-800/50 hover:bg-gray-900/50">
+                  <td className="py-3 px-2 text-gray-500 font-mono text-xs">{video.id}</td>
+                  <td className="py-3 px-2 text-gray-200 text-xs max-w-xs">{video.topic}</td>
+                  <td className="py-3 px-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      video.format === 'шок-цифра' ? 'bg-red-900/50 text-red-300' :
+                      video.format === 'сравнение' ? 'bg-blue-900/50 text-blue-300' :
+                      video.format === 'прогноз' ? 'bg-purple-900/50 text-purple-300' :
+                      'bg-green-900/50 text-green-300'
+                    }`}>
+                      {video.format}
+                    </span>
+                  </td>
+                  <td className="py-3 px-2">
+                    <div className="flex items-center gap-1">
+                      {palettes[video.paletteId as keyof typeof palettes]?.colors.slice(1, 3).map((c, i) => (
+                        <div key={i} className="w-3 h-3 rounded" style={{ backgroundColor: c }} />
+                      ))}
+                      <span className="text-xs text-gray-400 ml-1">{video.paletteName}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-xs text-gray-300">{video.rhythmDesc}</td>
+                  <td className="py-3 px-2 text-center text-xs text-gray-400 font-mono">{video.duration}с</td>
+                  <td className="py-3 px-2 text-center text-xs text-gray-400 font-mono">{video.size} MB</td>
+                  <td className="py-3 px-2 text-center">
+                    <span className={`text-xs font-bold ${video.status === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+                      {video.status === 'ok' ? '✓' : '✗'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Variability view */}
+      {activeView === 'variability' && (
+        <div className="space-y-6">
+          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+            <h3 className="text-lg font-bold text-white mb-4">🎯 Защита от шаблонности</h3>
+            <div className="space-y-3">
+              {variabilityReport.antiTemplate.map((item, i) => (
+                <p key={i} className="text-sm text-gray-300">{item}</p>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h4 className="font-bold text-white mb-3">Распределение форматов</h4>
+              <div className="space-y-2">
+                {Object.entries(batchStats.formatDistribution).map(([format, count]) => (
+                  <div key={format} className="flex items-center gap-3">
+                    <span className="text-sm text-gray-300 w-24">{format}</span>
+                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                      <div
+                        className={`h-full flex items-center justify-end px-2 text-xs font-bold text-white ${
+                          format === 'шок-цифра' ? 'bg-red-600' :
+                          format === 'сравнение' ? 'bg-blue-600' :
+                          format === 'прогноз' ? 'bg-purple-600' :
+                          'bg-green-600'
+                        }`}
+                        style={{ width: `${(count / 10) * 100}%` }}
+                      >
+                        {count}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h4 className="font-bold text-white mb-3">Распределение палитр</h4>
+              <div className="space-y-2">
+                {Object.entries(batchStats.paletteDistribution).map(([palette, count]) => (
+                  <div key={palette} className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 w-24">
+                      {palettes[palette as keyof typeof palettes]?.colors.slice(1, 3).map((c, i) => (
+                        <div key={i} className="w-3 h-3 rounded" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-end px-2 text-xs font-bold text-white"
+                        style={{ width: `${(count / 10) * 100}%` }}
+                      >
+                        {count}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h4 className="font-bold text-white mb-3">Распределение ритмов</h4>
+              <div className="space-y-2">
+                {Object.entries(batchStats.rhythmDistribution).map(([rhythm, count]) => (
+                  <div key={rhythm} className="flex items-center gap-3">
+                    <span className="text-sm text-gray-300 w-24">{rhythm}</span>
+                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                      <div
+                        className={`h-full flex items-center justify-end px-2 text-xs font-bold text-white ${
+                          rhythm === 'быстрый' ? 'bg-amber-600' :
+                          rhythm === 'средний' ? 'bg-cyan-600' :
+                          'bg-indigo-600'
+                        }`}
+                        style={{ width: `${(count / 10) * 100}%` }}
+                      >
+                        {count}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h4 className="font-bold text-white mb-3">Визуальное разнообразие</h4>
+              <div className="space-y-1.5 text-xs text-gray-400">
+                {variabilityReport.visualDiversity.map((item, i) => (
+                  <p key={i} className="font-mono">{item}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Palettes view */}
+      {activeView === 'palettes' && (
+        <div className="grid md:grid-cols-2 gap-6">
+          {Object.entries(palettes).map(([id, palette]) => (
+            <div key={id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+              <div className="h-32 flex">
+                {palette.colors.map((color, i) => (
+                  <div key={i} className="flex-1" style={{ backgroundColor: color }} />
+                ))}
+              </div>
+              <div className="p-4">
+                <h4 className="font-bold text-white mb-2">{palette.name}</h4>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-500">Accent 1:</span>
+                  <span className="text-xs font-mono text-gray-300">{palette.accent1}</span>
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: palette.accent1 }} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Accent 2:</span>
+                  <span className="text-xs font-mono text-gray-300">{palette.accent2}</span>
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: palette.accent2 }} />
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  Использовано в {batchStats.paletteDistribution[id as keyof typeof batchStats.paletteDistribution]} роликах
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Rhythms view */}
+      {activeView === 'rhythms' && (
+        <div className="space-y-4">
+          {Object.entries(rhythmVariants).map(([id, rhythm]) => (
+            <div key={id} className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-lg font-bold text-white">{rhythm.label}</h4>
+                <span className="text-sm text-gray-400 font-mono">{rhythm.frameDuration}с/кадр</span>
+              </div>
+              <p className="text-sm text-gray-300 mb-3">{rhythm.description}</p>
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span>Смена кадров: {rhythm.cutsPerMinute}/мин</span>
+                <span>•</span>
+                <span>Использовано в {batchStats.rhythmDistribution[id as keyof typeof batchStats.rhythmDistribution]} роликах</span>
+              </div>
+              {/* Visual representation */}
+              <div className="mt-4 flex gap-1">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-2 rounded bg-gradient-to-r from-purple-500 to-pink-500"
+                    style={{ width: `${rhythm.frameDuration * 10}px` }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Next step */}
+      <div className="bg-gradient-to-br from-purple-950 to-indigo-950 rounded-xl p-6 border border-purple-700/50">
+        <h3 className="text-lg font-bold text-purple-200 mb-4">🎯 Следующий шаг: ЭТАП 4</h3>
+        <p className="text-purple-300/80 text-sm mb-4">
+          Compliance-шлюз: <code className="bg-purple-900/50 px-2 py-0.5 rounded">python pipeline/compliance.py</code> — блокирующие проверки перед экспортом каждого ролика.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // ===== STAGE 2: Vertical Slice =====
 function StageTwoSection() {
