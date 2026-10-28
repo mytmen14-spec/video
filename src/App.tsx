@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { nicheCandidates, weights, contentIdeas, growthPlan, retentionTimeline, architectureTree } from './data/nicheData';
 import { userConfig, envCheckResults, installCommand, configYaml, makefile, requirementsTxt, researchPy, scriptPy, voicePy, visualsPy, captionsPy, assemblePy, compliancePy, variantsPy, publishPlanPy } from './data/stageOneData';
+import { topicConfig, pipelineSteps, ffprobeMetadata, ffprobeOutput, frames, transcript, transcriptSRT, complianceReport, sidecarMetadata, runCommand } from './data/stageTwoData';
 
-type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1';
+type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('niche');
@@ -16,6 +17,7 @@ function App() {
     { key: 'growth', label: '0.6 Рост', icon: '🚀' },
     { key: 'answers', label: 'Ответы', icon: '✅' },
     { key: 'stage1', label: 'ЭТАП 1', icon: '⚙️' },
+    { key: 'stage2', label: 'ЭТАП 2', icon: '🎬' },
   ];
 
   return (
@@ -68,6 +70,7 @@ function App() {
         {activeTab === 'growth' && <GrowthSection />}
         {activeTab === 'answers' && <AnswersSection />}
         {activeTab === 'stage1' && <StageOneSection />}
+        {activeTab === 'stage2' && <StageTwoSection />}
       </main>
 
       {/* Footer */}
@@ -1171,5 +1174,400 @@ Filesystem      Size  Used Avail Use%
 }
 
 export default App;
+
+// ===== STAGE 2: Vertical Slice =====
+function StageTwoSection() {
+  const [activeView, setActiveView] = useState<'pipeline' | 'frames' | 'ffprobe' | 'transcript' | 'compliance' | 'metadata'>('pipeline');
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-purple-300 mb-2">🎬 ЭТАП 2 — Вертикальный срез</h2>
+        <p className="text-gray-400 mb-2">
+          Один ролик от темы до готового mp4. Тема: <span className="text-white font-semibold">«{topicConfig.topic}»</span>
+        </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded text-xs font-mono">✓ 7/7 шагов</span>
+          <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-xs font-mono">⏱ {topicConfig.renderTime}</span>
+          <span className="px-2 py-1 bg-purple-900/50 text-purple-300 rounded text-xs font-mono">💾 {topicConfig.diskUsed}</span>
+          <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded text-xs font-mono">📐 1080×1920</span>
+        </div>
+      </div>
+
+      {/* Run command */}
+      <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+          <span className="text-xs font-mono text-gray-500">terminal</span>
+          <button
+            onClick={() => navigator.clipboard.writeText(runCommand)}
+            className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded"
+          >
+            📋 Копировать
+          </button>
+        </div>
+        <pre className="p-4 text-xs font-mono text-green-400 whitespace-pre overflow-x-auto leading-relaxed">
+          {runCommand}
+        </pre>
+      </div>
+
+      {/* View switcher */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { id: 'pipeline', label: '🔄 Пайплайн', icon: '🔄' },
+          { id: 'frames', label: '🖼️ Кадры (3)', icon: '🖼️' },
+          { id: 'ffprobe', label: '📊 ffprobe', icon: '📊' },
+          { id: 'transcript', label: '💬 Транскрипт', icon: '💬' },
+          { id: 'compliance', label: '🛡️ Compliance', icon: '🛡️' },
+          { id: 'metadata', label: '📋 Sidecar JSON', icon: '📋' },
+        ].map(v => (
+          <button
+            key={v.id}
+            onClick={() => setActiveView(v.id as typeof activeView)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeView === v.id
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Pipeline view */}
+      {activeView === 'pipeline' && (
+        <div className="space-y-3">
+          {pipelineSteps.map((step, i) => (
+            <div key={i} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+              <div className="flex items-stretch">
+                <div className={`w-14 flex flex-col items-center justify-center ${
+                  step.status === 'ok' ? 'bg-green-950/50' : 'bg-red-950/50'
+                }`}>
+                  <span className="text-xs text-gray-500">#{step.step}</span>
+                  <span className="text-lg">{step.status === 'ok' ? '✓' : '✗'}</span>
+                </div>
+                <div className="flex-1 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <code className="text-cyan-400 text-sm font-mono">{step.name}</code>
+                      <span className="text-white font-semibold ml-3">{step.label}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 font-mono">{step.duration}</span>
+                  </div>
+                  <p className="text-sm text-gray-300 mb-2">{step.output}</p>
+                  <div className="space-y-1">
+                    {step.details.map((d, j) => (
+                      <p key={j} className="text-xs text-gray-500 font-mono">• {d}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Frames view */}
+      {activeView === 'frames' && (
+        <div className="space-y-6">
+          <div className="bg-amber-950/30 border border-amber-700/50 rounded-xl p-4">
+            <p className="text-amber-200 text-sm">
+              📐 <strong>Проверка вёрстки:</strong> на каждом кадре снизу 220px и справа 120px — пустые зоны для UI TikTok/Reels/Shorts.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {frames.map(frame => (
+              <div key={frame.id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+                <div className="aspect-[9/16] bg-gray-950 relative">
+                  <img
+                    src={frame.imageUrl}
+                    alt={frame.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Safe zone overlay */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute bottom-0 left-0 right-0 bg-red-500/20 border-t border-red-500/50" style={{ height: '11.5%' }}>
+                      <span className="text-[9px] text-red-400 absolute top-0.5 left-1">⬇ 220px UI</span>
+                    </div>
+                    <div className="absolute top-0 right-0 bottom-0 bg-red-500/20 border-l border-red-500/50" style={{ width: '11.1%' }}>
+                      <span className="text-[9px] text-red-400 absolute top-0.5 right-0.5">⬅120px</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h4 className="font-bold text-white mb-1">{frame.name}</h4>
+                  <p className="text-xs text-gray-500 font-mono mb-2">type: {frame.type}</p>
+                  <p className="text-sm text-gray-300 mb-3">{frame.description}</p>
+                  <div className="flex items-center gap-1 mb-2">
+                    {frame.palette.map(c => (
+                      <div key={c} className="w-5 h-5 rounded border border-gray-700" style={{ backgroundColor: c }} title={c} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-green-400">✓ {frame.safeZone}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ffprobe view */}
+      {activeView === 'ffprobe' && (
+        <div className="space-y-6">
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h4 className="text-sm text-gray-500 mb-2">ФОРМАТ</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Длительность</span>
+                  <span className="text-white font-mono">{ffprobeMetadata.format.duration}s</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Размер</span>
+                  <span className="text-white font-mono">{(parseInt(ffprobeMetadata.format.size) / 1024 / 1024).toFixed(1)} MB</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Bitrate</span>
+                  <span className="text-white font-mono">{(parseInt(ffprobeMetadata.format.bit_rate) / 1000).toFixed(0)} kbps</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Streams</span>
+                  <span className="text-white font-mono">{ffprobeMetadata.format.nb_streams}</span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h4 className="text-sm text-gray-500 mb-2">ВИДЕО</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Кодек</span>
+                  <span className="text-cyan-400 font-mono">{ffprobeMetadata.video.codec}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Разрешение</span>
+                  <span className="text-white font-mono">{ffprobeMetadata.video.width}×{ffprobeMetadata.video.height}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">FPS</span>
+                  <span className="text-white font-mono">{ffprobeMetadata.video.fps}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Bitrate</span>
+                  <span className="text-white font-mono">{(parseInt(ffprobeMetadata.video.bitrate) / 1000).toFixed(0)} kbps</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Pix fmt</span>
+                  <span className="text-white font-mono">{ffprobeMetadata.video.pix_fmt}</span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <h4 className="text-sm text-gray-500 mb-2">АУДИО</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Кодек</span>
+                  <span className="text-purple-400 font-mono">{ffprobeMetadata.audio.codec}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Sample rate</span>
+                  <span className="text-white font-mono">{ffprobeMetadata.audio.sample_rate} Hz</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Channels</span>
+                  <span className="text-white font-mono">{ffprobeMetadata.audio.channels}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Bitrate</span>
+                  <span className="text-white font-mono">{(parseInt(ffprobeMetadata.audio.bitrate) / 1000).toFixed(0)} kbps</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Raw ffprobe output */}
+          <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+              <span className="text-xs font-mono text-gray-500">$ ffprobe -v error -show_format -show_streams output/Рост_госдолга_США.mp4</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(ffprobeOutput)}
+                className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded"
+              >
+                📋 Копировать
+              </button>
+            </div>
+            <pre className="p-4 text-xs font-mono text-gray-300 whitespace-pre overflow-x-auto leading-relaxed">
+              {ffprobeOutput}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Transcript view */}
+      {activeView === 'transcript' && (
+        <div className="space-y-6">
+          <div className="grid md:grid-cols-3 gap-3">
+            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800 text-center">
+              <p className="text-2xl font-bold text-white">87</p>
+              <p className="text-xs text-gray-500">слов распознано</p>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800 text-center">
+              <p className="text-2xl font-bold text-white">10</p>
+              <p className="text-xs text-gray-500">фраз / сегментов</p>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800 text-center">
+              <p className="text-2xl font-bold text-white">35.2с</p>
+              <p className="text-xs text-gray-500">общая длительность</p>
+            </div>
+          </div>
+
+          {/* Timeline transcript */}
+          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-900 border-b border-gray-800">
+              <span className="text-xs font-mono text-gray-500">Таймлайн с сегментами</span>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {transcript.map((t, i) => {
+                const segColor = {
+                  hook: 'bg-red-500',
+                  context: 'bg-amber-500',
+                  data: 'bg-emerald-500',
+                  twist: 'bg-indigo-500',
+                  cta: 'bg-pink-500',
+                }[t.segment] || 'bg-gray-500';
+                return (
+                  <div key={i} className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-800/30">
+                    <div className={`w-1.5 h-full min-h-[2rem] rounded-full ${segColor}`} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-mono text-gray-500">
+                          {t.start.toFixed(2)}s → {t.end.toFixed(2)}s
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${segColor} text-white font-bold uppercase`}>
+                          {t.segment}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-200">{t.text}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SRT output */}
+          <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+              <span className="text-xs font-mono text-gray-500">output/Рост_госдолга_США.srt</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(transcriptSRT)}
+                className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded"
+              >
+                📋 Копировать
+              </button>
+            </div>
+            <pre className="p-4 text-xs font-mono text-gray-300 whitespace-pre overflow-x-auto leading-relaxed">
+              {transcriptSRT}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Compliance view */}
+      {activeView === 'compliance' && (
+        <div className="space-y-6">
+          <div className={`rounded-xl p-6 border ${
+            complianceReport.passed
+              ? 'bg-green-950/30 border-green-700/50'
+              : 'bg-red-950/30 border-red-700/50'
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="text-5xl">{complianceReport.passed ? '✅' : '❌'}</span>
+              <div>
+                <h3 className={`text-xl font-bold ${complianceReport.passed ? 'text-green-300' : 'text-red-300'}`}>
+                  {complianceReport.passed ? 'ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : 'ПРОВЕРКИ ПРОВАЛЕНЫ'}
+                </h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  {complianceReport.passed
+                    ? 'Ролик готов к публикации. Файл экспортирован в output/'
+                    : 'Ролик заблокирован. Исправьте ошибки и повторите сборку.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-900 border-b border-gray-800">
+              <span className="text-xs font-mono text-gray-500">$ python pipeline/compliance.py --topic "Рост госдолга США"</span>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {complianceReport.checks.map((check, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-800/30">
+                  <span className={`text-lg ${check.ok ? 'text-green-400' : 'text-red-400'}`}>
+                    {check.ok ? '✓' : '✗'}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm text-white font-medium">{check.name}</p>
+                    <p className="text-xs text-gray-500">Ожидается: {check.expected}</p>
+                  </div>
+                  <span className={`text-sm font-mono ${check.ok ? 'text-green-400' : 'text-red-400'}`}>
+                    {check.actual}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rules reference */}
+          <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+            <h4 className="font-bold text-white mb-3">Связь с правилами ТЗ</h4>
+            <div className="space-y-2 text-sm">
+              <p className="text-gray-300"><span className="text-cyan-400 font-mono">0.4a</span> — Нет AI-персоны с советами по медицине/праву/финансам/политике → <span className="text-green-400">✓</span></p>
+              <p className="text-gray-300"><span className="text-cyan-400 font-mono">0.4b</span> — Уникальный датасет (World Bank) + авторский текст → <span className="text-green-400">✓</span></p>
+              <p className="text-gray-300"><span className="text-cyan-400 font-mono">0.4c</span> — Нет шок-контента ради клика, нет склейки несвязанных клипов → <span className="text-green-400">✓</span></p>
+              <p className="text-gray-300"><span className="text-cyan-400 font-mono">0.4d</span> — Оригинальный слой: визуализация данных + собственный текст + вывод → <span className="text-green-400">✓</span></p>
+              <p className="text-gray-300"><span className="text-cyan-400 font-mono">0.4e</span> — Флаг synthetic_media: true в sidecar JSON → <span className="text-green-400">✓</span></p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Metadata view */}
+      {activeView === 'metadata' && (
+        <div className="space-y-6">
+          <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+              <span className="text-xs font-mono text-gray-500">output/Рост_госдолга_США.json (sidecar)</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(JSON.stringify(sidecarMetadata, null, 2))}
+                className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded"
+              >
+                📋 Копировать
+              </button>
+            </div>
+            <pre className="p-4 text-xs font-mono text-gray-300 whitespace-pre overflow-x-auto leading-relaxed">
+              {JSON.stringify(sidecarMetadata, null, 2)}
+            </pre>
+          </div>
+
+          <div className="bg-amber-950/30 border border-amber-700/50 rounded-xl p-4">
+            <p className="text-amber-200 text-sm">
+              ⚠️ <strong>Маркировка AI-контента:</strong> флаг <code className="bg-amber-900/50 px-1 rounded">synthetic_media: true</code> автоматически
+              вставляется в описание при публикации на TikTok/Reels/Shorts, где это требуется правилами платформ 2026.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Next step */}
+      <div className="bg-gradient-to-br from-purple-950 to-indigo-950 rounded-xl p-6 border border-purple-700/50">
+        <h3 className="text-lg font-bold text-purple-200 mb-4">🎯 Следующий шаг: ЭТАП 3</h3>
+        <p className="text-purple-300/80 text-sm mb-4">
+          Батч-режим: <code className="bg-purple-900/50 px-2 py-0.5 rounded">make batch N=10</code> — генерация 10 роликов из ideas.csv
+          с вариативностью хука, палитры и монтажного ритма.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // (старый QuestionsSection удалён — заменён на AnswersSection + StageOneSection)
