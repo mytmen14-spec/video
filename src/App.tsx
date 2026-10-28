@@ -4,8 +4,9 @@ import { userConfig, envCheckResults, installCommand, configYaml, makefile, requ
 import { topicConfig, pipelineSteps, ffprobeMetadata, ffprobeOutput, frames, transcript, transcriptSRT, complianceReport, sidecarMetadata, runCommand } from './data/stageTwoData';
 import { batchConfig, batchVideos, palettes, rhythmVariants, batchStats, batchCommand, variabilityReport } from './data/stageThreeData';
 import { complianceChecks, complianceExamples, forbiddenKeywords, complianceWorkflow, aiLabelExamples, sidecarJsonExample } from './data/stageFourData';
+import { dailyMetrics, formatPerformance, recommendations, kpiGates, csvStructure, finalReport } from './data/stageFiveData';
 
-type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3' | 'stage4';
+type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stage5';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('niche');
@@ -22,6 +23,7 @@ function App() {
     { key: 'stage2', label: 'ЭТАП 2', icon: '🎬' },
       { key: 'stage3', label: 'ЭТАП 3', icon: '📦' },
       { key: 'stage4', label: 'ЭТАП 4', icon: '🛡️' },
+      { key: 'stage5', label: 'ЭТАП 5', icon: '📊' },
     ];
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
@@ -76,6 +78,7 @@ function App() {
         {activeTab === 'stage2' && <StageTwoSection />}
         {activeTab === 'stage3' && <StageThreeSection />}
         {activeTab === 'stage4' && <StageFourSection />}
+        {activeTab === 'stage5' && <StageFiveSection />}
       </main>
 
       {/* Footer */}
@@ -2178,6 +2181,460 @@ function StageFourSection() {
         <p className="text-purple-300/80 text-sm mb-4">
           Дашборд аналитики: локальный HTML-отчёт по метрикам (finish rate, shares, saves, подписчики) с автоматическим выводом рекомендаций.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ===== STAGE 5: Analytics Dashboard =====
+function StageFiveSection() {
+  const [activeView, setActiveView] = useState<'overview' | 'daily' | 'formats' | 'recommendations' | 'csv'>('overview');
+
+  const maxViews = Math.max(...dailyMetrics.map(d => d.views));
+  const maxSubs = Math.max(...dailyMetrics.map(d => d.totalSubs));
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-purple-300 mb-2">📊 ЭТАП 5 — Дашборд аналитики</h2>
+        <p className="text-gray-400 mb-2">
+          Локальный HTML-отчёт по метрикам за 14 дней. Автоматический вывод: <span className="text-green-400 font-semibold">какой формат масштабировать, какой убить</span>.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded text-xs font-mono">✓ {finalReport.totalNewSubs} подписчиков</span>
+          <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-xs font-mono">👁 {finalReport.totalViews.toLocaleString()} просмотров</span>
+          <span className="px-2 py-1 bg-purple-900/50 text-purple-300 rounded text-xs font-mono">📈 {finalReport.avgFinishRate}% finish rate</span>
+          <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded text-xs font-mono">🎯 {finalReport.viralHits} виральных хита</span>
+        </div>
+      </div>
+
+      {/* Final decision banner */}
+      <div className="bg-gradient-to-r from-green-950 to-emerald-950 border border-green-700/50 rounded-xl p-5">
+        <div className="flex items-center gap-4">
+          <span className="text-5xl">✅</span>
+          <div>
+            <h3 className="text-xl font-bold text-green-300">РЕШЕНИЕ: {finalReport.decision}</h3>
+            <p className="text-green-200/70 text-sm mt-1">{finalReport.nextStep}</p>
+            <p className="text-xs text-green-400/60 mt-2 font-mono">{finalReport.period}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Key metrics cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+          <p className="text-xs text-gray-500 mb-1">ВСЕГО РОЛИКОВ</p>
+          <p className="text-3xl font-bold text-white">{finalReport.totalVideos}</p>
+          <p className="text-xs text-gray-400 mt-1">~3.3 видео/день</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+          <p className="text-xs text-gray-500 mb-1">ПРОСМОТРЫ</p>
+          <p className="text-3xl font-bold text-blue-400">{(finalReport.totalViews / 1000).toFixed(0)}K</p>
+          <p className="text-xs text-gray-400 mt-1">Средний: {(finalReport.totalViews / finalReport.totalVideos).toFixed(0)}</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+          <p className="text-xs text-gray-500 mb-1">ПОДПИСЧИКИ</p>
+          <p className="text-3xl font-bold text-green-400">{(finalReport.totalNewSubs / 1000).toFixed(1)}K</p>
+          <p className="text-xs text-gray-400 mt-1">Цель 3K: ✓ перевыполнена</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+          <p className="text-xs text-gray-500 mb-1">FINISH RATE</p>
+          <p className="text-3xl font-bold text-purple-400">{finalReport.avgFinishRate}%</p>
+          <p className="text-xs text-gray-400 mt-1">Цель ≥65%: ✓</p>
+        </div>
+      </div>
+
+      {/* View switcher */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { id: 'overview', label: '📈 Обзор' },
+          { id: 'daily', label: '📅 По дням' },
+          { id: 'formats', label: '🎬 По форматам' },
+          { id: 'recommendations', label: '💡 Рекомендации' },
+          { id: 'csv', label: '📋 CSV-структура' },
+        ].map(v => (
+          <button
+            key={v.id}
+            onClick={() => setActiveView(v.id as typeof activeView)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeView === v.id
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview view */}
+      {activeView === 'overview' && (
+        <div className="space-y-6">
+          {/* Subscribers growth chart */}
+          <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+            <h3 className="text-lg font-bold text-white mb-4">Рост подписчиков (14 дней)</h3>
+            <div className="h-48 flex items-end gap-1">
+              {dailyMetrics.map((d, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                  <div
+                    className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t transition-all hover:opacity-80"
+                    style={{ height: `${(d.totalSubs / maxSubs) * 100}%` }}
+                    title={`День ${d.day}: ${d.totalSubs} подписчиков`}
+                  />
+                  <span className="text-[9px] text-gray-500 mt-1">{d.day}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <span>День 1</span>
+              <span>День 7 (гейт: 10K просмотров)</span>
+              <span>День 14</span>
+            </div>
+          </div>
+
+          {/* Views chart */}
+          <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+            <h3 className="text-lg font-bold text-white mb-4">Просмотры по дням</h3>
+            <div className="h-48 flex items-end gap-1">
+              {dailyMetrics.map((d, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                  <div
+                    className={`w-full rounded-t transition-all hover:opacity-80 ${
+                      d.viralHit ? 'bg-gradient-to-t from-amber-600 to-amber-400' : 'bg-gradient-to-t from-blue-600 to-blue-400'
+                    }`}
+                    style={{ height: `${(d.views / maxViews) * 100}%` }}
+                    title={`День ${d.day}: ${d.views.toLocaleString()} просмотров${d.viralHit ? ' (ВИРАЛ)' : ''}`}
+                  />
+                  <span className="text-[9px] text-gray-500 mt-1">{d.day}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-4 mt-3 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-blue-500 rounded" />
+                <span className="text-gray-400">Обычный ролик</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-amber-500 rounded" />
+                <span className="text-gray-400">Виральный хит (&gt;10K просмотров)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI gates */}
+          <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+            <h3 className="text-lg font-bold text-white mb-4">KPI-гейты (14-дневный план)</h3>
+            <div className="space-y-2">
+              {kpiGates.map((gate, i) => (
+                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${
+                  gate.passed ? 'bg-green-950/30' : 'bg-red-950/30'
+                }`}>
+                  <span className={`text-lg ${gate.passed ? 'text-green-400' : 'text-red-400'}`}>
+                    {gate.passed ? '✓' : '✗'}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm text-white">День {gate.day}: {gate.gate}</p>
+                    <p className={`text-xs ${gate.passed ? 'text-green-400' : 'text-red-400'}`}>
+                      Фактически: {gate.actual}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Daily view */}
+      {activeView === 'daily' && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">День</th>
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">Дата</th>
+                <th className="text-center py-3 px-2 text-gray-400 font-medium">Видео</th>
+                <th className="text-right py-3 px-2 text-gray-400 font-medium">Просмотры</th>
+                <th className="text-right py-3 px-2 text-gray-400 font-medium">Подписчики</th>
+                <th className="text-center py-3 px-2 text-gray-400 font-medium">Finish %</th>
+                <th className="text-right py-3 px-2 text-gray-400 font-medium">Shares</th>
+                <th className="text-right py-3 px-2 text-gray-400 font-medium">Saves</th>
+                <th className="text-left py-3 px-2 text-gray-400 font-medium">Лучший формат</th>
+                <th className="text-center py-3 px-2 text-gray-400 font-medium">Вирал</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dailyMetrics.map(d => (
+                <tr key={d.day} className={`border-b border-gray-800/50 hover:bg-gray-900/50 ${
+                  d.viralHit ? 'bg-amber-950/10' : ''
+                }`}>
+                  <td className="py-2 px-2 text-gray-500 font-mono text-xs">{d.day}</td>
+                  <td className="py-2 px-2 text-gray-400 text-xs font-mono">{d.date}</td>
+                  <td className="py-2 px-2 text-center text-gray-300">{d.videos}</td>
+                  <td className="py-2 px-2 text-right text-blue-400 font-mono text-xs">{d.views.toLocaleString()}</td>
+                  <td className="py-2 px-2 text-right text-green-400 font-mono text-xs">+{d.newSubs}</td>
+                  <td className="py-2 px-2 text-center">
+                    <span className={`text-xs font-mono ${
+                      d.finishRate >= 70 ? 'text-green-400' : d.finishRate >= 60 ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {d.finishRate}%
+                    </span>
+                  </td>
+                  <td className="py-2 px-2 text-right text-purple-400 font-mono text-xs">{d.shares}</td>
+                  <td className="py-2 px-2 text-right text-cyan-400 font-mono text-xs">{d.saves}</td>
+                  <td className="py-2 px-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      d.bestFormat === 'шок-цифра' ? 'bg-red-900/50 text-red-300' :
+                      d.bestFormat === 'сравнение' ? 'bg-blue-900/50 text-blue-300' :
+                      d.bestFormat === 'прогноз' ? 'bg-purple-900/50 text-purple-300' :
+                      'bg-green-900/50 text-green-300'
+                    }`}>
+                      {d.bestFormat}
+                    </span>
+                  </td>
+                  <td className="py-2 px-2 text-center">
+                    {d.viralHit && <span className="text-amber-400">🔥</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Formats view */}
+      {activeView === 'formats' && (
+        <div className="space-y-6">
+          <div className="bg-amber-950/30 border border-amber-700/50 rounded-xl p-4">
+            <p className="text-amber-200 text-sm">
+              💡 <strong>Автоматический анализ:</strong> система сравнивает метрики по форматам и выносит вердикт: «масштабировать», «оставить» или «убить».
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {formatPerformance.map(fp => (
+              <div key={fp.format} className={`bg-gray-900 rounded-xl border ${
+                fp.verdict === 'масштабировать' ? 'border-green-700/50' :
+                fp.verdict === 'оставить' ? 'border-yellow-700/50' :
+                'border-red-700/50'
+              } p-5`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: fp.color }} />
+                    <h4 className="font-bold text-white">{fp.format}</h4>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded font-bold ${
+                    fp.verdict === 'масштабировать' ? 'bg-green-900/50 text-green-300' :
+                    fp.verdict === 'оставить' ? 'bg-yellow-900/50 text-yellow-300' :
+                    'bg-red-900/50 text-red-300'
+                  }`}>
+                    {fp.verdict === 'масштабировать' && '🚀 '}
+                    {fp.verdict === 'оставить' && '⚠️ '}
+                    {fp.verdict === 'убить' && '⛔ '}
+                    {fp.verdict.toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-gray-500">Видео</p>
+                    <p className="text-white font-bold">{fp.videos}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Ср. просмотры</p>
+                    <p className="text-blue-400 font-bold">{fp.avgViews.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Finish rate</p>
+                    <p className={`font-bold ${fp.avgFinishRate >= 70 ? 'text-green-400' : fp.avgFinishRate >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {fp.avgFinishRate}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Engagement</p>
+                    <p className="text-purple-400 font-bold">{fp.engagementRate}%</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Shares</p>
+                    <p className="text-purple-400 font-bold">{fp.totalShares.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Saves</p>
+                    <p className="text-cyan-400 font-bold">{fp.totalSaves.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Format distribution pie chart (simplified) */}
+          <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+            <h3 className="text-lg font-bold text-white mb-4">Текущее vs Рекомендуемое распределение</h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-sm text-gray-400 mb-2">Текущее (14 дней)</p>
+                <div className="space-y-2">
+                  {formatPerformance.map(fp => {
+                    const pct = (fp.videos / finalReport.totalVideos) * 100;
+                    return (
+                      <div key={fp.format} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 w-20">{fp.format}</span>
+                        <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                          <div
+                            className="h-full flex items-center justify-end px-2 text-xs font-bold text-white"
+                            style={{ width: `${pct}%`, backgroundColor: fp.color }}
+                          >
+                            {pct.toFixed(0)}%
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 mb-2">Рекомендуемое</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-20">шок-цифра</span>
+                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                      <div className="h-full bg-red-500 flex items-center justify-end px-2 text-xs font-bold text-white" style={{ width: '50%' }}>50%</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-20">сравнение</span>
+                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                      <div className="h-full bg-blue-500 flex items-center justify-end px-2 text-xs font-bold text-white" style={{ width: '30%' }}>30%</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-20">прогноз</span>
+                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                      <div className="h-full bg-purple-500 flex items-center justify-end px-2 text-xs font-bold text-white" style={{ width: '15%' }}>15%</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-20">миф</span>
+                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
+                      <div className="h-full bg-green-500 flex items-center justify-end px-2 text-xs font-bold text-white" style={{ width: '5%' }}>5%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recommendations view */}
+      {activeView === 'recommendations' && (
+        <div className="space-y-4">
+          <div className="bg-green-950/30 border border-green-700/50 rounded-xl p-4">
+            <p className="text-green-200 text-sm">
+              💡 <strong>Автоматические рекомендации</strong> генерируются на основе метрик за последние 14 дней.
+              Приоритеты: high (критично), medium (важно), low (опционально).
+            </p>
+          </div>
+
+          {recommendations.map((rec, i) => (
+            <div key={i} className={`bg-gray-900 rounded-xl border ${
+              rec.priority === 'high' ? 'border-red-700/50' :
+              rec.priority === 'medium' ? 'border-yellow-700/50' :
+              'border-gray-700'
+            } p-5`}>
+              <div className="flex items-start gap-4">
+                <span className={`text-2xl ${
+                  rec.priority === 'high' ? 'text-red-400' :
+                  rec.priority === 'medium' ? 'text-yellow-400' :
+                  'text-gray-400'
+                }`}>
+                  {rec.priority === 'high' ? '🔴' : rec.priority === 'medium' ? '🟡' : '🟢'}
+                </span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h4 className="font-bold text-white">{rec.action}</h4>
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase ${
+                      rec.priority === 'high' ? 'bg-red-900/50 text-red-300' :
+                      rec.priority === 'medium' ? 'bg-yellow-900/50 text-yellow-300' :
+                      'bg-gray-800 text-gray-400'
+                    }`}>
+                      {rec.priority}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-300 mb-2">{rec.reason}</p>
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="text-gray-500">Метрика: <span className="text-cyan-400 font-mono">{rec.metric}</span></span>
+                    <span className="text-green-400">→ {rec.impact}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* CSV view */}
+      {activeView === 'csv' && (
+        <div className="space-y-4">
+          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <p className="text-sm text-gray-300 mb-2">
+              📋 <strong>CSV-структура</strong> для сбора метрик. Заполняется вручную после публикации каждого ролика
+              (данные берутся из аналитики TikTok/Reels/Shorts).
+            </p>
+            <p className="text-xs text-gray-500">
+              Файл: <code className="text-cyan-400">output/analytics.csv</code>
+            </p>
+          </div>
+
+          <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+              <span className="text-xs font-mono text-gray-500">output/analytics.csv</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(csvStructure)}
+                className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded"
+              >
+                📋 Копировать
+              </button>
+            </div>
+            <pre className="p-4 text-xs font-mono text-gray-300 whitespace-pre overflow-x-auto leading-relaxed">
+              {csvStructure}
+            </pre>
+          </div>
+
+          <div className="bg-blue-950/30 border border-blue-700/50 rounded-xl p-4">
+            <p className="text-blue-200 text-sm">
+              💡 <strong>Автоматизация:</strong> в будущем можно интегрировать API TikTok/Instagram для автоматического сбора метрик.
+              Пока — ручной ввод после публикации (занимает ~2 мин на ролик).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Final summary */}
+      <div className="bg-gradient-to-br from-purple-950 to-indigo-950 rounded-xl p-6 border border-purple-700/50">
+        <h3 className="text-lg font-bold text-purple-200 mb-4">🎯 Итоговый отчёт за 14 дней</h3>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="text-sm font-bold text-purple-300 mb-2">ДОСТИГНУТО:</h4>
+            <ul className="space-y-2 text-sm text-purple-200/80">
+              <li>✓ {finalReport.totalNewSubs.toLocaleString()} подписчиков (цель: 3000)</li>
+              <li>✓ {finalReport.totalViews.toLocaleString()} просмотров</li>
+              <li>✓ {finalReport.avgFinishRate}% средний finish rate (цель: ≥65%)</li>
+              <li>✓ {finalReport.viralHits} виральных хита (&gt;10K просмотров)</li>
+              <li>✓ Лучший день: {finalReport.bestDay.views.toLocaleString()} просмотров (день {finalReport.bestDay.day})</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-purple-300 mb-2">СЛЕДУЮЩИЕ ШАГИ:</h4>
+            <ul className="space-y-2 text-sm text-purple-200/80">
+              <li>→ Увеличить частоту до 4 видео/день</li>
+              <li>→ Сфокусироваться на «шок-цифра» (50%) и «сравнение» (30%)</li>
+              <li>→ Сократить «миф» до 5% или убрать</li>
+              <li>→ Продолжать 14-дневный цикл с новыми данными</li>
+              <li>→ Масштабировать виральные форматы</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
