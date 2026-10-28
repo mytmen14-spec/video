@@ -7,7 +7,10 @@ export default function VideoDemo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [currentSubtitle, setCurrentSubtitle] = useState('');
+  const [isMuted, setIsMuted] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSpokenRef = useRef<string>('');
 
   const currentVideo = demoVideos[currentVideoIndex];
 
@@ -36,6 +39,33 @@ export default function VideoDemo() {
     };
   }, [isPlaying, currentVideo.totalDuration]);
 
+  // Функция озвучки текста
+  const speak = (text: string) => {
+    if (!voiceEnabled || isMuted || !('speechSynthesis' in window)) return;
+    
+    // Не повторяем уже озвученный текст
+    if (lastSpokenRef.current === text) return;
+    lastSpokenRef.current = text;
+    
+    // Остановить предыдущую речь
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ru-RU';
+    utterance.rate = 1.08; // +8% как в конфиге
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    
+    // Попробовать найти русский голос
+    const voices = window.speechSynthesis.getVoices();
+    const russianVoice = voices.find(v => v.lang.startsWith('ru'));
+    if (russianVoice) {
+      utterance.voice = russianVoice;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
   useEffect(() => {
     // Найти текущий кадр
     const frameIndex = currentVideo.frames.findIndex(
@@ -49,22 +79,69 @@ export default function VideoDemo() {
       const subtitle = frame.subtitles.find(
         (sub) => currentTime >= sub.startTime && currentTime < sub.endTime
       );
-      setCurrentSubtitle(subtitle?.text || '');
+      const newSubtitle = subtitle?.text || '';
+      setCurrentSubtitle(newSubtitle);
+      
+      // Озвучить субтитры
+      if (newSubtitle && isPlaying) {
+        speak(newSubtitle);
+      }
     }
-  }, [currentTime, currentVideo]);
+  }, [currentTime, currentVideo, isPlaying]);
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const newPlaying = !isPlaying;
+    setIsPlaying(newPlaying);
+    if (!newPlaying) {
+      window.speechSynthesis.cancel();
+    }
   };
 
   const handleSeek = (time: number) => {
     setCurrentTime(time);
+    lastSpokenRef.current = ''; // Сбросить при перемотке
+    window.speechSynthesis.cancel();
   };
 
   const handleRestart = () => {
     setCurrentTime(0);
+    lastSpokenRef.current = '';
+    window.speechSynthesis.cancel();
     setIsPlaying(true);
   };
+
+  const handleMuteToggle = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    if (newMuted) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  const handleVoiceToggle = () => {
+    const newEnabled = !voiceEnabled;
+    setVoiceEnabled(newEnabled);
+    if (!newEnabled) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  // Очистка речи при размонтировании
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  // Загрузка голосов
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -214,10 +291,56 @@ export default function VideoDemo() {
                         </svg>
                       )}
                     </button>
+
+                    {/* Voice toggle */}
+                    <button
+                      onClick={handleVoiceToggle}
+                      className={`p-2 rounded-full transition-colors ${
+                        voiceEnabled
+                          ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                          : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                      }`}
+                      title={voiceEnabled ? 'Выключить озвучку' : 'Включить озвучку'}
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        {voiceEnabled ? (
+                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                        ) : (
+                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0L20 6.828l-1.414 1.414L14.657 4.343a1 1 0 010-1.414z" clipRule="evenodd" />
+                        )}
+                      </svg>
+                    </button>
+
+                    {/* Mute toggle */}
+                    <button
+                      onClick={handleMuteToggle}
+                      className={`p-2 rounded-full transition-colors ${
+                        !isMuted
+                          ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30'
+                          : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                      }`}
+                      title={isMuted ? 'Включить звук' : 'Выключить звук'}
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        {isMuted ? (
+                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                        ) : (
+                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0L20 6.828l-1.414 1.414L14.657 4.343a1 1 0 010-1.414z" clipRule="evenodd" />
+                        )}
+                      </svg>
+                    </button>
                   </div>
 
-                  <div className="text-gray-400 text-sm">
-                    Кадр {currentFrameIndex + 1} / {currentVideo.frames.length}
+                  <div className="flex items-center gap-3">
+                    {voiceEnabled && (
+                      <span className="text-xs text-green-400 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        Озвучка
+                      </span>
+                    )}
+                    <div className="text-gray-400 text-sm">
+                      Кадр {currentFrameIndex + 1} / {currentVideo.frames.length}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -288,12 +411,27 @@ export default function VideoDemo() {
 
             {/* Current subtitle */}
             <div className="bg-gray-800/50 backdrop-blur rounded-xl p-6 border border-gray-700">
-              <h3 className="text-lg font-bold text-white mb-4">Текущие субтитры</h3>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                Текущие субтитры
+                {currentSubtitle && voiceEnabled && !isMuted && (
+                  <span className="flex items-center gap-1 text-xs text-green-400">
+                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    Озвучивается
+                  </span>
+                )}
+              </h3>
               <div className="bg-black/50 rounded-lg p-4 min-h-[80px] flex items-center justify-center">
                 <p className="text-xl font-bold text-white text-center">
                   {currentSubtitle || '—'}
                 </p>
               </div>
+              {currentSubtitle && (
+                <div className="mt-3 text-xs text-gray-400">
+                  <p>🔊 Голос: Русский (ru-RU)</p>
+                  <p>⚡ Скорость: 1.08× (+8%)</p>
+                  <p>🎙️ Технология: Web Speech API</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -301,13 +439,22 @@ export default function VideoDemo() {
         {/* Instructions */}
         <div className="mt-12 bg-gray-800/30 backdrop-blur rounded-xl p-6 border border-gray-700">
           <h3 className="text-xl font-bold text-white mb-4">💡 Как использовать</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
+          <div className="grid md:grid-cols-3 gap-4 text-sm text-gray-300">
             <div>
               <p className="font-semibold text-purple-400 mb-2">▶️ Воспроизведение:</p>
               <ul className="space-y-1 text-gray-400">
                 <li>• Нажмите кнопку Play для запуска</li>
                 <li>• Кадры меняются автоматически по таймингам</li>
                 <li>• Субтитры появляются синхронно с кадрами</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-purple-400 mb-2">🔊 Озвучка:</p>
+              <ul className="space-y-1 text-gray-400">
+                <li>• 🎙️ Кнопка «Озвучка» — вкл/выкл голос</li>
+                <li>• 🔇 Кнопка «Звук» — полный mute</li>
+                <li>• Используется русский голос (ru-RU)</li>
+                <li>• Скорость: +8% (как в конфиге)</li>
               </ul>
             </div>
             <div>
@@ -318,6 +465,15 @@ export default function VideoDemo() {
                 <li>• Кнопка Restart для начала сначала</li>
               </ul>
             </div>
+          </div>
+          
+          <div className="mt-4 p-3 bg-blue-950/30 border border-blue-700/50 rounded-lg">
+            <p className="text-blue-200 text-xs">
+              🔊 <strong>Технология озвучки:</strong> Web Speech API (встроенный в браузер). 
+              Используется русский голос с настройками: скорость 1.08×, тон 1.0. 
+              Это имитация работы edge-tts (ru-RU-DmitryNeural) из реального пайплайна.
+              Для настоящей озвучки — запустите <code className="bg-blue-900/50 px-1 rounded">make video</code> локально.
+            </p>
           </div>
         </div>
       </div>
