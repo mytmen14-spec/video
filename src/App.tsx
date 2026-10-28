@@ -3,8 +3,9 @@ import { nicheCandidates, weights, contentIdeas, growthPlan, retentionTimeline, 
 import { userConfig, envCheckResults, installCommand, configYaml, makefile, requirementsTxt, researchPy, scriptPy, voicePy, visualsPy, captionsPy, assemblePy, compliancePy, variantsPy, publishPlanPy } from './data/stageOneData';
 import { topicConfig, pipelineSteps, ffprobeMetadata, ffprobeOutput, frames, transcript, transcriptSRT, complianceReport, sidecarMetadata, runCommand } from './data/stageTwoData';
 import { batchConfig, batchVideos, palettes, rhythmVariants, batchStats, batchCommand, variabilityReport } from './data/stageThreeData';
+import { complianceChecks, complianceExamples, forbiddenKeywords, complianceWorkflow, aiLabelExamples, sidecarJsonExample } from './data/stageFourData';
 
-type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3';
+type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3' | 'stage4';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('niche');
@@ -19,9 +20,9 @@ function App() {
     { key: 'answers', label: 'Ответы', icon: '✅' },
     { key: 'stage1', label: 'ЭТАП 1', icon: '⚙️' },
     { key: 'stage2', label: 'ЭТАП 2', icon: '🎬' },
-    { key: 'stage3', label: 'ЭТАП 3', icon: '📦' },
-  ];
-
+      { key: 'stage3', label: 'ЭТАП 3', icon: '📦' },
+      { key: 'stage4', label: 'ЭТАП 4', icon: '🛡️' },
+    ];
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       {/* Header */}
@@ -74,6 +75,7 @@ function App() {
         {activeTab === 'stage1' && <StageOneSection />}
         {activeTab === 'stage2' && <StageTwoSection />}
         {activeTab === 'stage3' && <StageThreeSection />}
+        {activeTab === 'stage4' && <StageFourSection />}
       </main>
 
       {/* Footer */}
@@ -1865,6 +1867,316 @@ function StageTwoSection() {
         <p className="text-purple-300/80 text-sm mb-4">
           Батч-режим: <code className="bg-purple-900/50 px-2 py-0.5 rounded">make batch N=10</code> — генерация 10 роликов из ideas.csv
           с вариативностью хука, палитры и монтажного ритма.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ===== STAGE 4: Compliance Gateway =====
+function StageFourSection() {
+  const [activeView, setActiveView] = useState<'checks' | 'workflow' | 'examples' | 'keywords' | 'ailabel' | 'sidecar'>('checks');
+  const [selectedExample, setSelectedExample] = useState<number>(0);
+
+  const currentExample = complianceExamples[selectedExample];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-purple-300 mb-2">🛡️ ЭТАП 4 — Compliance-шлюз</h2>
+        <p className="text-gray-400 mb-2">
+          Блокирующий шлюз: ролик <span className="text-red-400 font-semibold">не экспортируется</span>, пока не пройдут все проверки.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <span className="px-2 py-1 bg-red-900/50 text-red-300 rounded text-xs font-mono">⛔ Блокирующий</span>
+          <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded text-xs font-mono">✓ 8 проверок</span>
+          <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-xs font-mono">📋 Правила 0.4a–0.4e</span>
+        </div>
+      </div>
+
+      {/* Warning banner */}
+      <div className="bg-red-950/30 border border-red-700/50 rounded-xl p-4">
+        <p className="text-red-200 text-sm">
+          ⛔ <strong>Блокирующий шлюз:</strong> если хотя бы одна проверка провалена — ролик НЕ экспортируется в output/.
+          Вместо этого выводится список ошибок с рекомендациями по исправлению. Это защита от публикации контента,
+          нарушающего правила платформ 2026.
+        </p>
+      </div>
+
+      {/* View switcher */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { id: 'checks', label: '🔍 8 проверок' },
+          { id: 'workflow', label: '🔄 Workflow' },
+          { id: 'examples', label: '📊 Примеры' },
+          { id: 'keywords', label: '🚫 Запрещённые слова' },
+          { id: 'ailabel', label: '⚠️ AI-маркировка' },
+          { id: 'sidecar', label: '📋 Sidecar JSON' },
+        ].map(v => (
+          <button
+            key={v.id}
+            onClick={() => setActiveView(v.id as typeof activeView)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeView === v.id
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Checks view */}
+      {activeView === 'checks' && (
+        <div className="space-y-3">
+          {complianceChecks.map((check, i) => (
+            <div key={check.id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+              <div className="flex items-stretch">
+                <div className="w-12 flex items-center justify-center bg-red-950/30">
+                  <span className="text-red-400 text-lg">⛔</span>
+                </div>
+                <div className="flex-1 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <h4 className="font-bold text-white">{check.name}</h4>
+                      <span className="text-xs px-2 py-0.5 bg-purple-900/50 text-purple-300 rounded font-mono">
+                        {check.rule}
+                      </span>
+                    </div>
+                    <code className="text-xs text-gray-500 font-mono hidden md:block">{check.method}</code>
+                  </div>
+                  <p className="text-sm text-gray-300 mb-2">{check.description}</p>
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="text-gray-500">Ожидается: <span className="text-green-400 font-mono">{check.expected}</span></span>
+                    <span className="text-red-400 font-bold">КРИТИЧНО</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Workflow view */}
+      {activeView === 'workflow' && (
+        <div className="space-y-3">
+          {complianceWorkflow.map((step, i) => (
+            <div key={i} className={`bg-gray-900 rounded-xl border ${
+              step.critical ? 'border-red-700/50 bg-red-950/10' : 'border-gray-800'
+            } overflow-hidden`}>
+              <div className="flex items-stretch">
+                <div className={`w-14 flex flex-col items-center justify-center ${
+                  step.critical ? 'bg-red-950/50' : 'bg-gray-800/50'
+                }`}>
+                  <span className="text-xs text-gray-500">#{step.step}</span>
+                  {step.critical && <span className="text-red-400 text-lg mt-1">⛔</span>}
+                </div>
+                <div className="flex-1 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <code className="text-cyan-400 text-sm font-mono">{step.name}</code>
+                    <span className="text-sm text-gray-400">{step.action}</span>
+                  </div>
+                  <p className={`text-xs ${step.critical ? 'text-red-300 font-semibold' : 'text-gray-500'}`}>
+                    {step.compliance}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="bg-amber-950/30 border border-amber-700/50 rounded-xl p-4 mt-4">
+            <p className="text-amber-200 text-sm">
+              💡 <strong>Важно:</strong> compliance.py запускается ПОСЛЕ сборки mp4, но ДО экспорта в финальную директорию.
+              Если проверка провалена — файл удаляется, выводится список ошибок, и ролик не попадает в output/.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Examples view */}
+      {activeView === 'examples' && (
+        <div className="space-y-6">
+          {/* Example selector */}
+          <div className="flex flex-wrap gap-2">
+            {complianceExamples.map((ex, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedExample(i)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedExample === i
+                    ? ex.passed ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                {ex.passed ? '✓' : '✗'} {ex.topic}
+              </button>
+            ))}
+          </div>
+
+          {/* Selected example */}
+          <div className={`rounded-xl border ${
+            currentExample.passed ? 'bg-green-950/20 border-green-700/50' : 'bg-red-950/20 border-red-700/50'
+          } p-6`}>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-4xl">{currentExample.passed ? '✅' : '❌'}</span>
+              <div>
+                <h3 className={`text-xl font-bold ${currentExample.passed ? 'text-green-300' : 'text-red-300'}`}>
+                  {currentExample.passed ? 'ПРОЙДЕНО' : 'ПРОВАЛЕНО'}
+                </h3>
+                <p className="text-sm text-gray-400">Тема: {currentExample.topic}</p>
+                <p className="text-xs text-gray-500 font-mono">{currentExample.timestamp}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {currentExample.checks.map((check, i) => {
+                const checkDef = complianceChecks.find(c => c.id === check.id);
+                return (
+                  <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${
+                    check.ok ? 'bg-green-950/30' : 'bg-red-950/30'
+                  }`}>
+                    <span className={`text-lg ${check.ok ? 'text-green-400' : 'text-red-400'}`}>
+                      {check.ok ? '✓' : '✗'}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm text-white font-medium">{checkDef?.name}</p>
+                      <p className="text-xs text-gray-400">
+                        Ожидается: <span className="font-mono">{check.expected}</span> |
+                        Фактически: <span className={`font-mono ${check.ok ? 'text-green-400' : 'text-red-400'}`}>{check.actual}</span>
+                      </p>
+                      {check.error && (
+                        <p className="text-xs text-red-300 mt-1">⚠️ {check.error}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {!currentExample.passed && (
+              <div className="mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                <p className="text-sm text-gray-300 font-semibold mb-2">🔧 Как исправить:</p>
+                <ul className="text-xs text-gray-400 space-y-1">
+                  {currentExample.checks.filter(c => !c.ok).map((c, i) => (
+                    <li key={i}>• {c.error || `Исправить: ${c.actual} → ${c.expected}`}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Keywords view */}
+      {activeView === 'keywords' && (
+        <div className="space-y-4">
+          <div className="bg-red-950/30 border border-red-700/50 rounded-xl p-4">
+            <p className="text-red-200 text-sm">
+              🚫 <strong>Правило 0.4a:</strong> Запрещено создавать AI-персону, дающую советы по здоровью, медицине, праву, финансам или политике.
+              Это прямая категория демонетизации YouTube "inauthentic content" (3-я категория).
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {Object.entries(forbiddenKeywords).map(([category, keywords]) => (
+              <div key={category} className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+                <h4 className="font-bold text-white mb-3 flex items-center gap-2">
+                  <span className="text-red-400">⛔</span>
+                  <span className="text-sm font-mono text-red-300">{category}</span>
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {keywords.map((kw, i) => (
+                    <span key={i} className="px-2 py-1 bg-red-900/30 text-red-300 rounded text-xs font-mono">
+                      "{kw}"
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-amber-950/30 border border-amber-700/50 rounded-xl p-4">
+            <p className="text-amber-200 text-sm">
+              💡 <strong>Альтернатива:</strong> Вместо советов можно показывать <span className="font-semibold">данные и статистику</span> без рекомендаций.
+              Например, не "инвестируй в крипту", а "вот как вырос биткоин за 10 лет" — это факты, не советы.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* AI Label view */}
+      {activeView === 'ailabel' && (
+        <div className="space-y-6">
+          <div className="bg-amber-950/30 border border-amber-700/50 rounded-xl p-4">
+            <p className="text-amber-200 text-sm">
+              ⚠️ <strong>Правило 0.4e:</strong> Все платформы (TikTok, Instagram Reels, YouTube Shorts) требуют маркировку AI-контента с 2024 года.
+              Флаг <code className="bg-amber-900/50 px-1 rounded">synthetic_media: true</code> автоматически вставляется в описание при публикации.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {Object.entries(aiLabelExamples).map(([platform, data]) => (
+              <div key={platform} className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+                <h4 className="font-bold text-white mb-3 capitalize">{platform}</h4>
+                <div className="bg-gray-950 rounded-lg p-3 mb-3">
+                  <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+                    {data.description}
+                  </pre>
+                </div>
+                <p className="text-xs text-gray-500">{data.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sidecar JSON view */}
+      {activeView === 'sidecar' && (
+        <div className="space-y-4">
+          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+            <p className="text-sm text-gray-300 mb-2">
+              📋 <strong>Sidecar JSON</strong> — метаданные ролика, сохраняются рядом с mp4-файлом.
+              Содержат всю информацию о происхождении контента, источниках данных, параметрах сборки и результате compliance-проверок.
+            </p>
+            <p className="text-xs text-gray-500">
+              Файл: <code className="text-cyan-400">output/Рост_госдолга_США.json</code>
+            </p>
+          </div>
+
+          <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+              <span className="text-xs font-mono text-gray-500">output/Рост_госдолга_США.json</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(sidecarJsonExample)}
+                className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded"
+              >
+                📋 Копировать
+              </button>
+            </div>
+            <pre className="p-4 text-xs font-mono text-gray-300 whitespace-pre overflow-x-auto leading-relaxed max-h-96">
+              {sidecarJsonExample}
+            </pre>
+          </div>
+
+          <div className="bg-green-950/30 border border-green-700/50 rounded-xl p-4">
+            <p className="text-green-200 text-sm">
+              ✓ <strong>Ключевые поля:</strong>
+            </p>
+            <ul className="text-xs text-green-300/80 mt-2 space-y-1">
+              <li>• <code>synthetic_media: true</code> — маркировка AI-контента</li>
+              <li>• <code>ai_label_required: true</code> — флаг для автоматической вставки в описание</li>
+              <li>• <code>source.license</code> — лицензия источника данных (CC-BY-4.0, CC0, etc.)</li>
+              <li>• <code>compliance.passed: true</code> — результат всех проверок</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Next step */}
+      <div className="bg-gradient-to-br from-purple-950 to-indigo-950 rounded-xl p-6 border border-purple-700/50">
+        <h3 className="text-lg font-bold text-purple-200 mb-4">🎯 Следующий шаг: ЭТАП 5</h3>
+        <p className="text-purple-300/80 text-sm mb-4">
+          Дашборд аналитики: локальный HTML-отчёт по метрикам (finish rate, shares, saves, подписчики) с автоматическим выводом рекомендаций.
         </p>
       </div>
     </div>
