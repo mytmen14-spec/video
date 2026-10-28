@@ -6,8 +6,9 @@ import { batchConfig, batchVideos, palettes, rhythmVariants, batchStats, batchCo
 import { complianceChecks, complianceExamples, forbiddenKeywords, complianceWorkflow, aiLabelExamples, sidecarJsonExample } from './data/stageFourData';
 import { dailyMetrics, formatPerformance, recommendations, kpiGates, csvStructure, finalReport } from './data/stageFiveData';
 import VideoDemo from './components/VideoDemo';
+import AnimateDemo from './components/AnimateDemo';
 
-type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stage5' | 'demo';
+type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stage5' | 'demo' | 'animate';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('niche');
@@ -26,6 +27,7 @@ function App() {
       { key: 'stage4', label: 'ЭТАП 4', icon: '🛡️' },
       { key: 'stage5', label: 'ЭТАП 5', icon: '📊' },
       { key: 'demo', label: '🎬 ДЕМО', icon: '🎬' },
+      { key: 'animate', label: '✨ ОЖИВЛЕНИЕ', icon: '✨' },
     ];
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
@@ -70,6 +72,8 @@ function App() {
       {/* Content */}
       {activeTab === 'demo' ? (
         <VideoDemo />
+      ) : activeTab === 'animate' ? (
+        <AnimateDemo />
       ) : (
         <main className="max-w-7xl mx-auto px-4 py-8">
           {activeTab === 'niche' && <NicheSection />}
