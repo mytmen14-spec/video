@@ -5,8 +5,9 @@ import { topicConfig, pipelineSteps, ffprobeMetadata, ffprobeOutput, frames, tra
 import { batchConfig, batchVideos, palettes, rhythmVariants, batchStats, batchCommand, variabilityReport } from './data/stageThreeData';
 import { complianceChecks, complianceExamples, forbiddenKeywords, complianceWorkflow, aiLabelExamples, sidecarJsonExample } from './data/stageFourData';
 import { dailyMetrics, formatPerformance, recommendations, kpiGates, csvStructure, finalReport } from './data/stageFiveData';
+import VideoDemo from './components/VideoDemo';
 
-type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stage5';
+type Tab = 'niche' | 'format' | 'retention' | 'architecture' | 'matrix' | 'growth' | 'answers' | 'stage1' | 'stage2' | 'stage3' | 'stage4' | 'stage5' | 'demo';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('niche');
@@ -24,6 +25,7 @@ function App() {
       { key: 'stage3', label: 'ЭТАП 3', icon: '📦' },
       { key: 'stage4', label: 'ЭТАП 4', icon: '🛡️' },
       { key: 'stage5', label: 'ЭТАП 5', icon: '📊' },
+      { key: 'demo', label: '🎬 ДЕМО', icon: '🎬' },
     ];
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
@@ -66,28 +68,34 @@ function App() {
       </nav>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {activeTab === 'niche' && <NicheSection />}
-        {activeTab === 'format' && <FormatSection />}
-        {activeTab === 'retention' && <RetentionSection />}
-        {activeTab === 'architecture' && <ArchitectureSection />}
-        {activeTab === 'matrix' && <MatrixSection />}
-        {activeTab === 'growth' && <GrowthSection />}
-        {activeTab === 'answers' && <AnswersSection />}
-        {activeTab === 'stage1' && <StageOneSection />}
-        {activeTab === 'stage2' && <StageTwoSection />}
-        {activeTab === 'stage3' && <StageThreeSection />}
-        {activeTab === 'stage4' && <StageFourSection />}
-        {activeTab === 'stage5' && <StageFiveSection />}
-      </main>
+      {activeTab === 'demo' ? (
+        <VideoDemo />
+      ) : (
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          {activeTab === 'niche' && <NicheSection />}
+          {activeTab === 'format' && <FormatSection />}
+          {activeTab === 'retention' && <RetentionSection />}
+          {activeTab === 'architecture' && <ArchitectureSection />}
+          {activeTab === 'matrix' && <MatrixSection />}
+          {activeTab === 'growth' && <GrowthSection />}
+          {activeTab === 'answers' && <AnswersSection />}
+          {activeTab === 'stage1' && <StageOneSection />}
+          {activeTab === 'stage2' && <StageTwoSection />}
+          {activeTab === 'stage3' && <StageThreeSection />}
+          {activeTab === 'stage4' && <StageFourSection />}
+          {activeTab === 'stage5' && <StageFiveSection />}
+        </main>
+      )}
 
       {/* Footer */}
-      <footer className="bg-gray-900 border-t border-gray-800 py-6">
-        <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-          <p>Short-Form Video Pipeline • ЭТАП 0 • Ожидание ответов на уточняющие вопросы</p>
-          <p className="mt-1 text-gray-600">Не написана ни строчка кода пайплайна — только стратегия</p>
-        </div>
-      </footer>
+      {activeTab !== 'demo' && (
+        <footer className="bg-gray-900 border-t border-gray-800 py-6">
+          <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>Short-Form Video Pipeline • Все 5 этапов завершены • Готово к запуску</p>
+            <p className="mt-1 text-gray-600">Команда: <code className="text-purple-400">make video TOPIC="..."</code> или <code className="text-purple-400">make batch N=10</code></p>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
